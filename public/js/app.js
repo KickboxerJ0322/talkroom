@@ -149,6 +149,9 @@ function resetMediaControls() {
   ui.setCameraButtonLabel(false);
   ui.setSpeakerButtonLabel(true);
   ui.remoteAudio.muted = false;
+  ui.remoteAudio.volume = 1;
+  ui.remoteVideo.muted = true;
+  ui.remoteVideo.volume = 0;
 }
 
 async function resetApp() {
@@ -528,6 +531,9 @@ async function toggleCamera() {
 function toggleSpeaker() {
   state.speakerEnabled = !state.speakerEnabled;
   ui.remoteAudio.muted = !state.speakerEnabled;
+  ui.remoteAudio.volume = state.speakerEnabled ? (isMobileDevice() ? 0.34 : 0.56) : 0;
+  ui.remoteVideo.muted = true;
+  ui.remoteVideo.volume = 0;
   ui.setSpeakerButtonLabel(state.speakerEnabled);
 }
 

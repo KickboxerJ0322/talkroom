@@ -50,6 +50,7 @@ export class UIController {
     this.emptyTranscript = document.getElementById("emptyTranscript");
     this.timerId = null;
     this.callStartedAt = null;
+    this.remoteVideo.muted = true;
   }
 
   getRoomIdInput() {
@@ -198,6 +199,7 @@ export class UIController {
   attachRemoteStream(stream) {
     this.remoteAudio.srcObject = stream;
     this.remoteVideo.srcObject = stream;
+    this.remoteVideo.muted = true;
     this.syncVideoPanels({ localStream: this.localVideo.srcObject, remoteStream: stream });
   }
 
