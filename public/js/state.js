@@ -8,6 +8,13 @@ export function createInitialState() {
     socketConnected: false,
     callConnected: false,
     micEnabled: true,
-    rtcConfiguration: { iceServers: [] }
+    rtcConfiguration: { iceServers: [] },
+    transcriptMessages: [],
+    transcriptDrafts: {
+      local: "",
+      remote: ""
+    },
+    transcriptSupported: false,
+    transcriptListening: false
   };
 }

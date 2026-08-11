@@ -91,11 +91,16 @@ function leaveCurrentRoom(socket, reason = "left") {
   socket.data.roomId = null;
   socket.data.pin = null;
   socket.to(roomId).emit("peer-left", { reason });
+  socket.to(roomId).emit("transcript-interim", { text: "" });
   emitRoomState(roomId);
 
   if (getRoomSize(roomId) === 0) {
     roomPins.delete(roomId);
   }
+}
+
+function isAuthorizedRoomEvent(socket, roomId, payload) {
+  return Boolean(roomId && roomId === socket.data.roomId && payload);
 }
 
 io.on("connection", (socket) => {
@@ -176,7 +181,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("offer", ({ roomId, offer }) => {
-    if (!roomId || roomId !== socket.data.roomId || !offer) {
+    if (!isAuthorizedRoomEvent(socket, roomId, offer)) {
       return;
     }
 
@@ -184,7 +189,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("answer", ({ roomId, answer }) => {
-    if (!roomId || roomId !== socket.data.roomId || !answer) {
+    if (!isAuthorizedRoomEvent(socket, roomId, answer)) {
       return;
     }
 
@@ -192,11 +197,27 @@ io.on("connection", (socket) => {
   });
 
   socket.on("ice-candidate", ({ roomId, candidate }) => {
-    if (!roomId || roomId !== socket.data.roomId || !candidate) {
+    if (!isAuthorizedRoomEvent(socket, roomId, candidate)) {
       return;
     }
 
     socket.to(roomId).emit("ice-candidate", { candidate });
+  });
+
+  socket.on("transcript-interim", ({ roomId, text }) => {
+    if (typeof text !== "string" || !roomId || roomId !== socket.data.roomId) {
+      return;
+    }
+
+    socket.to(roomId).emit("transcript-interim", { text });
+  });
+
+  socket.on("transcript-final", ({ roomId, text }) => {
+    if (typeof text !== "string" || !roomId || roomId !== socket.data.roomId || !text.trim()) {
+      return;
+    }
+
+    socket.to(roomId).emit("transcript-final", { text: text.trim() });
   });
 
   socket.on("leave-room", () => {

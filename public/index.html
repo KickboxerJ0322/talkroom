@@ -3,15 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Call</title>
+    <title>Talkroom</title>
+    <link rel="icon" type="image/png" href="/talkroom_icon.png" />
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
     <main class="app-shell">
       <section class="card join-card" aria-labelledby="app-title">
-        <p class="eyebrow">Voice Call MVP</p>
-        <h1 id="app-title">AI Call</h1>
-        <p class="lead">ルームIDとPINを入力して、2人で音声通話できます。</p>
+        <div class="brand-row">
+          <img class="brand-icon" src="/talkroom_icon.png" alt="Talkroom icon" />
+          <div>
+            <h1 id="app-title">Talkroom</h1>
+            <p class="lead">ルームIDとPINを共有して、2人で音声通話とリアルタイム文字起こしを行えます。</p>
+          </div>
+        </div>
 
         <form id="join-form" class="join-form" novalidate>
           <label class="field-label" for="roomId">ルームID</label>
@@ -44,9 +49,7 @@
           />
           <p id="pinHelp" class="help-text">4〜8桁の数字を入力してください。</p>
 
-          <button id="joinButton" class="primary-button" type="submit">
-            通話ルームに参加
-          </button>
+          <button id="joinButton" class="primary-button" type="submit">通話ルームに参加</button>
         </form>
       </section>
 
@@ -67,12 +70,28 @@
         <div class="timer" id="callTimer">00:00</div>
 
         <div class="actions">
-          <button id="muteButton" class="secondary-button" type="button" disabled>
-            マイクOFF
-          </button>
-          <button id="hangupButton" class="danger-button" type="button" disabled>
-            通話を終了
-          </button>
+          <button id="muteButton" class="secondary-button" type="button" disabled>マイクOFF</button>
+          <button id="hangupButton" class="danger-button" type="button" disabled>通話を終了</button>
+        </div>
+      </section>
+
+      <section class="card transcript-card" aria-live="polite">
+        <div class="transcript-header">
+          <div>
+            <p class="section-kicker">Phase 2 / Phase 3</p>
+            <h2 class="section-title">リアルタイム会話ログ</h2>
+          </div>
+          <span id="transcriptStatus" class="transcript-status unsupported">文字起こし未対応</span>
+        </div>
+
+        <p class="help-text transcript-help">
+          対応ブラウザでは話した内容をリアルタイムに文字起こしし、話者ごとにLINE風の会話表示へ反映します。
+        </p>
+
+        <div id="transcriptTimeline" class="transcript-timeline" aria-label="会話ログ">
+          <div class="empty-transcript" id="emptyTranscript">
+            通話が始まると、ここに会話ログが表示されます。
+          </div>
         </div>
       </section>
     </main>
