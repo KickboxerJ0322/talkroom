@@ -172,7 +172,6 @@ function resetRoomState() {
   state.pin = "";
   ui.setRoom("");
   ui.setJoinDisabled(false);
-  resetTranscriptState();
 }
 
 async function teardownCall({ keepRoom = false } = {}) {
