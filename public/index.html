@@ -38,12 +38,15 @@
           <label class="field-label" for="pin">PIN</label>
           <input
             id="pin"
-            name="pin"
+            name="roomPin"
             class="room-input"
-            type="password"
+            type="text"
             inputmode="numeric"
             maxlength="8"
-            autocomplete="off"
+            autocomplete="one-time-code"
+            pattern="[0-9]*"
+            enterkeyhint="done"
+            spellcheck="false"
             placeholder="1234"
             aria-describedby="pinHelp"
           />

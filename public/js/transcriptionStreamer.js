@@ -1,5 +1,6 @@
 const DEFAULT_CHUNK_DURATION_MS = 2400;
 const DEFAULT_LANGUAGE_CODE = "ja-JP";
+const TARGET_SAMPLE_RATE = 16000;
 
 function mergeFloat32Chunks(chunks, length) {
   const merged = new Float32Array(length);
@@ -26,6 +27,32 @@ function encodeLinear16(samples) {
   }
 
   return buffer;
+}
+
+function downsampleBuffer(samples, sourceSampleRate, targetSampleRate) {
+  if (targetSampleRate >= sourceSampleRate) {
+    return samples;
+  }
+
+  const sampleRateRatio = sourceSampleRate / targetSampleRate;
+  const newLength = Math.round(samples.length / sampleRateRatio);
+  const downsampled = new Float32Array(newLength);
+  let sourceOffset = 0;
+
+  for (let index = 0; index < newLength; index += 1) {
+    const nextSourceOffset = Math.round((index + 1) * sampleRateRatio);
+    let total = 0;
+    let count = 0;
+
+    for (; sourceOffset < nextSourceOffset && sourceOffset < samples.length; sourceOffset += 1) {
+      total += samples[sourceOffset];
+      count += 1;
+    }
+
+    downsampled[index] = count > 0 ? total / count : 0;
+  }
+
+  return downsampled;
 }
 
 export class TranscriptionStreamer {
@@ -145,14 +172,16 @@ export class TranscriptionStreamer {
   }
 
   async sendChunk(samples) {
-    const pcmBuffer = encodeLinear16(samples);
+    const outputSampleRate = Math.min(this.sampleRate, TARGET_SAMPLE_RATE);
+    const outputSamples = downsampleBuffer(samples, this.sampleRate, outputSampleRate);
+    const pcmBuffer = encodeLinear16(outputSamples);
     const response = await fetch("/api/transcribe", {
       method: "POST",
       headers: {
         "Content-Type": "application/octet-stream",
         "X-Audio-Encoding": "LINEAR16",
         "X-Language-Code": this.languageCode,
-        "X-Sample-Rate-Hz": String(Math.round(this.sampleRate))
+        "X-Sample-Rate-Hz": String(Math.round(outputSampleRate))
       },
       body: pcmBuffer
     });
