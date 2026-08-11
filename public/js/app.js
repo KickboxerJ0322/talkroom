@@ -1,6 +1,7 @@
 import { createInitialState } from "./state.js";
-import { UIController } from "./ui.js";
 import { SocketClient } from "./socketClient.js";
+import { TranscriptionStreamer } from "./transcriptionStreamer.js";
+import { UIController } from "./ui.js";
 import { WebRtcClient } from "./webrtcClient.js";
 
 const ROOM_ID_PATTERN = /^[A-Za-z0-9_-]{3,32}$/;
@@ -18,11 +19,8 @@ const MEDIA_CONSTRAINTS = {
 const state = createInitialState();
 const ui = new UIController();
 const socketClient = new SocketClient(io({ autoConnect: true }));
-const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
 let webRtcClient = null;
-let speechRecognition = null;
-let suppressSpeechRestart = false;
-let speechStartedByGesture = false;
+let transcriptionStreamer = null;
 
 function isMobileDevice() {
   return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -68,122 +66,86 @@ function updateTranscriptDraft(speaker, text) {
   renderTranscript();
 }
 
-function createSpeechRecognition() {
-  if (!SpeechRecognitionCtor) {
+function createTranscriptionStreamer() {
+  if (!state.transcriptServerEnabled || !TranscriptionStreamer.isSupported()) {
     state.transcriptSupported = false;
+    state.transcriptListening = false;
     setTranscriptStatus();
     return null;
   }
 
-  const recognition = new SpeechRecognitionCtor();
-  recognition.lang = "ja-JP";
-  recognition.continuous = true;
-  recognition.interimResults = true;
-
-  recognition.onstart = () => {
-    state.transcriptListening = true;
-    setTranscriptStatus();
-  };
-
-  recognition.onresult = (event) => {
-    let interimText = "";
-
-    for (let index = event.resultIndex; index < event.results.length; index += 1) {
-      const result = event.results[index];
-      const transcript = result[0]?.transcript || "";
-
-      if (result.isFinal) {
-        appendTranscriptMessage("local", transcript);
-        socketClient.emit("transcript-final", {
-          roomId: state.roomId,
-          text: transcript
-        });
-      } else {
-        interimText += transcript;
-      }
-    }
-
-    updateTranscriptDraft("local", interimText);
-    socketClient.emit("transcript-interim", {
-      roomId: state.roomId,
-      text: interimText
-    });
-  };
-
-  recognition.onerror = () => {
-    state.transcriptListening = false;
-    setTranscriptStatus();
-  };
-
-  recognition.onend = () => {
-    state.transcriptListening = false;
-    setTranscriptStatus();
-
-    if ((state.callConnected || speechStartedByGesture) && !suppressSpeechRestart) {
-      try {
-        recognition.start();
-      } catch (_error) {
-        state.transcriptListening = false;
-        setTranscriptStatus();
-      }
-    }
-  };
-
   state.transcriptSupported = true;
+  state.transcriptListening = false;
   setTranscriptStatus();
 
-  return recognition;
-}
-
-function startSpeechRecognition({ force = false } = {}) {
-  if (!state.transcriptSupported || !speechRecognition) {
-    return;
-  }
-
-  if (!state.callConnected && !force) {
-    return;
-  }
-
-  suppressSpeechRestart = false;
-
-  try {
-    speechRecognition.start();
-  } catch (_error) {
-    state.transcriptListening = false;
-    setTranscriptStatus();
-  }
-}
-
-function stopSpeechRecognition() {
-  if (!speechRecognition) {
-    return;
-  }
-
-  suppressSpeechRestart = true;
-  speechStartedByGesture = false;
-  state.transcriptDrafts.local = "";
-  socketClient.emit("transcript-interim", {
-    roomId: state.roomId,
-    text: ""
+  return new TranscriptionStreamer({
+    stream: state.localStream,
+    onTranscript: (text) => {
+      appendTranscriptMessage("local", text);
+      socketClient.emit("transcript-final", {
+        roomId: state.roomId,
+        text
+      });
+    },
+    onStateChange: ({ supported, listening }) => {
+      state.transcriptSupported = supported;
+      state.transcriptListening = listening;
+      setTranscriptStatus();
+    },
+    onError: (error) => {
+      ui.showError(error.message || "音声文字起こしに失敗しました。");
+      state.transcriptListening = false;
+      setTranscriptStatus();
+    }
   });
-  renderTranscript();
+}
+
+async function startTranscription({ force = false } = {}) {
+  if ((!state.callConnected && !force) || !state.localStream || !state.transcriptServerEnabled) {
+    return;
+  }
+
+  if (!transcriptionStreamer) {
+    transcriptionStreamer = createTranscriptionStreamer();
+  }
+
+  if (!transcriptionStreamer) {
+    return;
+  }
 
   try {
-    speechRecognition.stop();
+    await transcriptionStreamer.start();
+  } catch (error) {
+    ui.showError(error.message || "音声文字起こしを開始できませんでした。");
+    state.transcriptListening = false;
+    setTranscriptStatus();
+  }
+}
+
+async function stopTranscription() {
+  if (!transcriptionStreamer) {
+    return;
+  }
+
+  updateTranscriptDraft("local", "");
+  try {
+    await transcriptionStreamer.stop();
   } catch (_error) {
     state.transcriptListening = false;
     setTranscriptStatus();
   }
 }
 
-async function fetchRtcConfiguration() {
+async function fetchAppConfiguration() {
   const response = await fetch("/api/config");
   if (!response.ok) {
-    throw new Error("通話設定の読み込みに失敗しました。");
+    throw new Error("設定の読み込みに失敗しました。");
   }
 
   const data = await response.json();
   state.rtcConfiguration = data.rtcConfiguration;
+  state.transcriptServerEnabled = Boolean(data.transcription?.enabled);
+  state.transcriptSupported = state.transcriptServerEnabled && TranscriptionStreamer.isSupported();
 }
 
 async function ensureLocalAudio() {
@@ -198,7 +160,7 @@ async function ensureLocalAudio() {
     return state.localStream;
   } catch (error) {
     if (error && (error.name === "NotAllowedError" || error.name === "PermissionDeniedError")) {
-      throw new Error("マイクの使用が許可されていません。ブラウザ設定を確認してください。");
+      throw new Error("マイクの利用が許可されていません。ブラウザ設定を確認してください。");
     }
 
     throw new Error("マイクを利用できませんでした。");
@@ -213,13 +175,15 @@ function resetRoomState() {
   resetTranscriptState();
 }
 
-function teardownCall({ keepRoom = false } = {}) {
-  stopSpeechRecognition();
+async function teardownCall({ keepRoom = false } = {}) {
+  await stopTranscription();
 
   if (webRtcClient) {
     webRtcClient.close();
   }
 
+  webRtcClient = null;
+  transcriptionStreamer = null;
   state.peerConnection = null;
   state.remoteStream = null;
   state.callConnected = false;
@@ -258,7 +222,7 @@ function initializeWebRtcClient() {
       state.remoteStream = stream;
       ui.attachRemoteStream(stream);
     },
-    onConnectionStateChange: (connectionState) => {
+    onConnectionStateChange: async (connectionState) => {
       if (connectionState === "connected") {
         state.callConnected = true;
         ui.clearError();
@@ -266,16 +230,16 @@ function initializeWebRtcClient() {
         ui.setPresence("音声接続が完了しました。");
         ui.setCallControlsDisabled(false);
         ui.startTimer();
-        startSpeechRecognition();
+        await startTranscription();
       }
 
       if (["failed", "disconnected"].includes(connectionState)) {
-        ui.showError("相手との接続に失敗しました。再度お試しください。");
-        teardownCall({ keepRoom: true });
+        ui.showError("接続に失敗しました。通信環境を確認してください。");
+        await teardownCall({ keepRoom: true });
       }
 
       if (connectionState === "closed") {
-        teardownCall({ keepRoom: true });
+        await teardownCall({ keepRoom: true });
       }
     }
   });
@@ -300,7 +264,7 @@ async function joinRoom() {
   }
 
   if (!ROOM_ID_PATTERN.test(roomId)) {
-    ui.showError("ルームIDは3〜32文字の英字、数字、ハイフン、アンダースコアで入力してください。");
+    ui.showError("ルームIDは3〜32文字の英数字、ハイフン、アンダースコアで入力してください。");
     return;
   }
 
@@ -310,6 +274,7 @@ async function joinRoom() {
   }
 
   await ensureLocalAudio();
+  transcriptionStreamer = createTranscriptionStreamer();
   state.roomId = roomId;
   state.pin = pin;
   ui.setRoom(roomId);
@@ -317,17 +282,14 @@ async function joinRoom() {
   ui.setStatus("waiting", "接続中");
   ui.setPresence("相手を待っています。");
   resetTranscriptState();
-  if (state.transcriptSupported && !speechStartedByGesture) {
-    speechStartedByGesture = true;
-    startSpeechRecognition({ force: true });
-  }
+  await startTranscription({ force: true });
 
   socketClient.emit("join-room", { roomId, pin });
 }
 
 async function leaveRoom() {
   socketClient.emit("leave-room");
-  teardownCall();
+  await teardownCall();
   stopLocalStream();
   ui.clearError();
   ui.setMuteButtonLabel(true);
@@ -353,16 +315,16 @@ function registerSocketEvents() {
     }
   });
 
-  socketClient.on("disconnect", () => {
+  socketClient.on("disconnect", async () => {
     state.socketConnected = false;
     ui.showError("Socket.IO接続が切れました。ページを再読み込みして再接続してください。");
-    teardownCall({ keepRoom: true });
+    await teardownCall({ keepRoom: true });
   });
 
   socketClient.on("joined-room", ({ roomId, participantCount }) => {
     state.roomId = roomId;
     ui.setRoom(roomId);
-    ui.setPresence(participantCount === 1 ? "相手を待っています。" : "接続準備を進めています。");
+    ui.setPresence(participantCount === 1 ? "相手を待っています。" : "通話相手を認識しています。");
   });
 
   socketClient.on("waiting-peer", ({ message }) => {
@@ -372,20 +334,20 @@ function registerSocketEvents() {
 
   socketClient.on("peer-present", async () => {
     ui.setStatus("waiting", "接続中");
-    ui.setPresence("接続準備を進めています。");
+    ui.setPresence("通話相手を認識しています。");
     await preparePeerConnection();
   });
 
   socketClient.on("peer-joined", async () => {
     try {
       ui.setStatus("waiting", "接続中");
-      ui.setPresence("接続準備を進めています。");
+      ui.setPresence("通話相手を認識しています。");
       await preparePeerConnection();
       const offer = await webRtcClient.createOffer();
       socketClient.emit("offer", { roomId: state.roomId, offer });
     } catch (error) {
       ui.showError(error.message || "通話接続の準備に失敗しました。");
-      teardownCall({ keepRoom: true });
+      await teardownCall({ keepRoom: true });
     }
   });
 
@@ -399,7 +361,7 @@ function registerSocketEvents() {
       socketClient.emit("answer", { roomId: state.roomId, answer });
     } catch (_error) {
       ui.showError("Offerの処理に失敗しました。");
-      teardownCall({ keepRoom: true });
+      await teardownCall({ keepRoom: true });
     }
   });
 
@@ -408,7 +370,7 @@ function registerSocketEvents() {
       await webRtcClient.handleAnswer(answer);
     } catch (_error) {
       ui.showError("Answerの処理に失敗しました。");
-      teardownCall({ keepRoom: true });
+      await teardownCall({ keepRoom: true });
     }
   });
 
@@ -430,17 +392,21 @@ function registerSocketEvents() {
     appendTranscriptMessage("remote", text || "");
   });
 
-  socketClient.on("peer-left", () => {
+  socketClient.on("peer-left", async () => {
     ui.showError("相手が退出しました。");
-    teardownCall({ keepRoom: true });
+    await teardownCall({ keepRoom: true });
   });
 
-  socketClient.on("room-full", ({ message }) => {
+  socketClient.on("room-full", async ({ message }) => {
+    await stopTranscription();
+    transcriptionStreamer = null;
     ui.showError(message);
     resetRoomState();
   });
 
-  socketClient.on("room-error", ({ message }) => {
+  socketClient.on("room-error", async ({ message }) => {
+    await stopTranscription();
+    transcriptionStreamer = null;
     ui.showError(message);
     resetRoomState();
   });
@@ -448,11 +414,11 @@ function registerSocketEvents() {
 
 async function init() {
   try {
-    await fetchRtcConfiguration();
-    speechRecognition = createSpeechRecognition();
-    ui.remoteAudio.volume = isMobileDevice() ? 0.38 : 0.62;
+    await fetchAppConfiguration();
+    ui.remoteAudio.volume = isMobileDevice() ? 0.34 : 0.56;
     registerSocketEvents();
     renderTranscript();
+    setTranscriptStatus();
 
     ui.joinForm.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -476,7 +442,7 @@ window.addEventListener("beforeunload", () => {
   if (state.roomId) {
     socketClient.emit("leave-room");
   }
-  stopSpeechRecognition();
+  stopTranscription();
   stopLocalStream();
 });
 

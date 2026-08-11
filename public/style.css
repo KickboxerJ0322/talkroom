@@ -1,24 +1,24 @@
 :root {
   color-scheme: light;
-  --bg-start: #fff5dd;
-  --bg-mid: #ffe3a7;
-  --bg-end: #fff9ef;
-  --glow-left: rgba(255, 102, 71, 0.24);
-  --glow-right: rgba(255, 191, 0, 0.3);
-  --card-bg: rgba(255, 251, 245, 0.9);
-  --card-border: rgba(216, 152, 55, 0.2);
-  --text-primary: #4d2c0d;
-  --text-secondary: #8f6031;
-  --accent: #f08a24;
-  --accent-strong: #ff6b2c;
-  --accent-soft: rgba(240, 138, 36, 0.16);
-  --danger: #cc4f2e;
-  --success: #6ea21c;
-  --waiting: #f2ad27;
-  --timeline-bg: rgba(255, 246, 229, 0.86);
-  --bubble-local: linear-gradient(135deg, #ffe27f, #ffc14f);
-  --bubble-remote: #ffffff;
-  --shadow: 0 24px 60px rgba(157, 99, 24, 0.18);
+  --bg-start: #fffef1;
+  --bg-mid: #fff6bf;
+  --bg-end: #fffbe3;
+  --glow-left: rgba(255, 226, 102, 0.42);
+  --glow-right: rgba(255, 244, 174, 0.6);
+  --card-bg: rgba(255, 253, 241, 0.94);
+  --card-border: rgba(225, 193, 78, 0.28);
+  --text-primary: #4d3a05;
+  --text-secondary: #81671c;
+  --accent: #efcc2e;
+  --accent-strong: #d8af00;
+  --accent-soft: rgba(239, 204, 46, 0.2);
+  --danger: #c7602d;
+  --success: #7e9d1c;
+  --waiting: #efc12e;
+  --timeline-bg: rgba(255, 250, 219, 0.9);
+  --bubble-local: linear-gradient(135deg, #fff3a6, #ffe16b);
+  --bubble-remote: #fffef7;
+  --shadow: 0 24px 60px rgba(168, 142, 32, 0.16);
   --radius: 28px;
   font-family: "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
 }
@@ -31,9 +31,9 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(circle at left 18%, var(--glow-left), transparent 30%),
-    radial-gradient(circle at right 15%, var(--glow-right), transparent 28%),
-    linear-gradient(180deg, var(--bg-start), var(--bg-mid) 38%, var(--bg-end));
+    radial-gradient(circle at left 18%, var(--glow-left), transparent 32%),
+    radial-gradient(circle at right 16%, var(--glow-right), transparent 30%),
+    linear-gradient(180deg, var(--bg-start), var(--bg-mid) 40%, var(--bg-end));
   color: var(--text-primary);
 }
 
@@ -77,7 +77,7 @@ input[type="password"] {
   flex: 0 0 auto;
   border-radius: 18px;
   object-fit: cover;
-  box-shadow: 0 12px 24px rgba(255, 123, 0, 0.28);
+  box-shadow: 0 12px 24px rgba(231, 193, 38, 0.3);
 }
 
 h1,
@@ -102,7 +102,6 @@ h1 {
   font-size: 1.2rem;
 }
 
-.lead,
 .help-text,
 .presence-text {
   color: var(--text-secondary);
@@ -122,11 +121,11 @@ h1 {
 
 .room-input {
   width: 100%;
-  border: 1px solid rgba(185, 120, 39, 0.24);
+  border: 1px solid rgba(214, 181, 62, 0.3);
   border-radius: 18px;
   padding: 16px 18px;
   font-size: 1.06rem;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.94);
   color: var(--text-primary);
 }
 
@@ -146,17 +145,17 @@ h1 {
 }
 
 .primary-button {
-  background: linear-gradient(135deg, var(--accent-strong), var(--accent));
-  color: #fffdf8;
+  background: linear-gradient(135deg, #f3d84c, #e8bc11);
+  color: #5a4300;
 }
 
 .secondary-button {
-  background: rgba(255, 193, 79, 0.18);
-  color: var(--accent-strong);
+  background: rgba(239, 204, 46, 0.16);
+  color: #a27b00;
 }
 
 .danger-button {
-  background: rgba(204, 79, 46, 0.12);
+  background: rgba(199, 96, 45, 0.12);
   color: var(--danger);
 }
 
@@ -201,17 +200,17 @@ button:not(:disabled):active {
   height: 11px;
   border-radius: 999px;
   background: var(--waiting);
-  box-shadow: 0 0 0 8px rgba(242, 173, 39, 0.14);
+  box-shadow: 0 0 0 8px rgba(239, 193, 46, 0.14);
 }
 
 .status-dot.connected {
   background: var(--success);
-  box-shadow: 0 0 0 8px rgba(110, 162, 28, 0.14);
+  box-shadow: 0 0 0 8px rgba(126, 157, 28, 0.14);
 }
 
 .status-dot.error {
   background: var(--danger);
-  box-shadow: 0 0 0 8px rgba(204, 79, 46, 0.14);
+  box-shadow: 0 0 0 8px rgba(199, 96, 45, 0.14);
 }
 
 .timer {
@@ -232,7 +231,7 @@ button:not(:disabled):active {
   margin: 0;
   padding: 12px 14px;
   border-radius: 14px;
-  background: rgba(204, 79, 46, 0.08);
+  background: rgba(199, 96, 45, 0.08);
   color: var(--danger);
   font-weight: 600;
 }
@@ -256,17 +255,17 @@ button:not(:disabled):active {
 }
 
 .transcript-status.supported {
-  background: rgba(110, 162, 28, 0.14);
-  color: #5a8418;
+  background: rgba(126, 157, 28, 0.14);
+  color: #698217;
 }
 
 .transcript-status.listening {
-  background: rgba(240, 138, 36, 0.18);
-  color: #c56400;
+  background: rgba(239, 204, 46, 0.2);
+  color: #a58000;
 }
 
 .transcript-status.unsupported {
-  background: rgba(143, 96, 49, 0.12);
+  background: rgba(129, 103, 28, 0.12);
   color: var(--text-secondary);
 }
 
@@ -281,7 +280,7 @@ button:not(:disabled):active {
   padding: 14px;
   border-radius: 24px;
   background: var(--timeline-bg);
-  border: 1px solid rgba(216, 152, 55, 0.16);
+  border: 1px solid rgba(225, 193, 78, 0.18);
 }
 
 .empty-transcript {
@@ -307,18 +306,18 @@ button:not(:disabled):active {
   max-width: min(82%, 420px);
   border-radius: 20px;
   padding: 12px 14px;
-  box-shadow: 0 10px 24px rgba(157, 99, 24, 0.08);
+  box-shadow: 0 10px 24px rgba(168, 142, 32, 0.08);
 }
 
 .message-row.local .message-bubble {
   background: var(--bubble-local);
-  color: #603000;
+  color: #5d4700;
   border-bottom-right-radius: 8px;
 }
 
 .message-row.remote .message-bubble {
   background: var(--bubble-remote);
-  color: #6a3d16;
+  color: #6b5311;
   border-bottom-left-radius: 8px;
 }
 
@@ -336,7 +335,7 @@ button:not(:disabled):active {
 }
 
 .message-time {
-  color: rgba(102, 70, 32, 0.76);
+  color: rgba(107, 83, 17, 0.72);
 }
 
 .message-text {
@@ -347,7 +346,7 @@ button:not(:disabled):active {
 }
 
 .message-row.draft .message-bubble {
-  border: 1px dashed rgba(216, 152, 55, 0.45);
+  border: 1px dashed rgba(225, 193, 78, 0.52);
   box-shadow: none;
 }
 

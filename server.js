@@ -8,6 +8,7 @@ const { getRtcConfiguration } = require("./config/webrtc");
 
 const DEFAULT_HTTP_PORT = 3000;
 const DEFAULT_HTTPS_PORT = 3443;
+const GOOGLE_STT_ENDPOINT = "https://speech.googleapis.com/v1/speech:recognize";
 const ROOM_ID_PATTERN = /^[A-Za-z0-9_-]{3,32}$/;
 const PIN_PATTERN = /^\d{4,8}$/;
 const roomPins = new Map();
@@ -42,14 +43,110 @@ function loadHttpsOptions() {
   };
 }
 
+function isRoomIdValid(roomId) {
+  return ROOM_ID_PATTERN.test(roomId);
+}
+
+function isPinValid(pin) {
+  return PIN_PATTERN.test(pin);
+}
+
+function getSpeechApiKey() {
+  return process.env.GOOGLE_CLOUD_API_KEY || "";
+}
+
+function isTranscriptionEnabled() {
+  return Boolean(getSpeechApiKey());
+}
+
+function normalizeTranscriptFromResponse(payload) {
+  const results = Array.isArray(payload.results) ? payload.results : [];
+
+  return results
+    .map((result) => result.alternatives?.[0]?.transcript || "")
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function transcribeAudio(buffer, languageCode = "ja-JP") {
+  const apiKey = getSpeechApiKey();
+  if (!apiKey) {
+    throw new Error("Google Cloud Speech-to-Text の API キーが未設定です。");
+  }
+
+  const response = await fetch(`${GOOGLE_STT_ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      config: {
+        languageCode,
+        enableAutomaticPunctuation: true,
+        model: "default"
+      },
+      audio: {
+        content: buffer.toString("base64")
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const errorPayload = await response.json().catch(() => ({}));
+    const apiMessage = errorPayload.error?.message;
+    throw new Error(apiMessage || "Google Cloud Speech-to-Text の呼び出しに失敗しました。");
+  }
+
+  return normalizeTranscriptFromResponse(await response.json());
+}
+
 const app = express();
 app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/api/config", (_req, res) => {
   res.json({
-    rtcConfiguration: getRtcConfiguration()
+    rtcConfiguration: getRtcConfiguration(),
+    transcription: {
+      enabled: isTranscriptionEnabled()
+    }
   });
 });
+
+app.post(
+  "/api/transcribe",
+  express.raw({ type: "*/*", limit: "2mb" }),
+  async (req, res) => {
+    if (!isTranscriptionEnabled()) {
+      res.status(503).json({
+        message: "Google Cloud Speech-to-Text の API キーが設定されていません。"
+      });
+      return;
+    }
+
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+      res.status(400).json({
+        message: "音声データが空です。"
+      });
+      return;
+    }
+
+    const languageCodeHeader = req.get("X-Language-Code");
+    const languageCode =
+      typeof languageCodeHeader === "string" && languageCodeHeader.trim()
+        ? languageCodeHeader.trim()
+        : "ja-JP";
+
+    try {
+      const text = await transcribeAudio(req.body, languageCode);
+      res.json({ text });
+    } catch (error) {
+      res.status(502).json({
+        message: error.message || "音声文字起こしに失敗しました。"
+      });
+    }
+  }
+);
 
 app.get("/health", (_req, res) => {
   res.json({ ok: true });
@@ -60,14 +157,6 @@ const transportServer = shouldUseHttps()
   : http.createServer(app);
 
 const io = new Server(transportServer);
-
-function isRoomIdValid(roomId) {
-  return ROOM_ID_PATTERN.test(roomId);
-}
-
-function isPinValid(pin) {
-  return PIN_PATTERN.test(pin);
-}
 
 function getRoomSize(roomId) {
   return io.sockets.adapter.rooms.get(roomId)?.size || 0;
@@ -112,7 +201,7 @@ io.on("connection", (socket) => {
       socket.emit("room-error", {
         code: "INVALID_ROOM",
         message:
-          "ルームIDは3〜32文字の英字、数字、ハイフン、アンダースコアで入力してください。"
+          "ルームIDは3〜32文字の英数字、ハイフン、アンダースコアで入力してください。"
       });
       return;
     }

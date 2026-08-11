@@ -14,6 +14,7 @@ export function createInitialState() {
       local: "",
       remote: ""
     },
+    transcriptServerEnabled: false,
     transcriptSupported: false,
     transcriptListening: false
   };

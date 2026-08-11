@@ -101,7 +101,7 @@ export class UIController {
 
     if (!supported) {
       this.transcriptStatus.classList.add("unsupported");
-      this.transcriptStatus.textContent = "文字起こし未対応";
+      this.transcriptStatus.textContent = "文字起こし未設定";
       return;
     }
 
@@ -112,7 +112,7 @@ export class UIController {
     }
 
     this.transcriptStatus.classList.add("supported");
-    this.transcriptStatus.textContent = "文字起こし準備完了";
+    this.transcriptStatus.textContent = "文字起こし待機";
   }
 
   renderTranscript(messages, drafts) {
@@ -152,7 +152,7 @@ export class UIController {
 
     const time = document.createElement("span");
     time.className = "message-time";
-    time.textContent = isDraft ? "入力中..." : formatMessageTime(message.timestamp);
+    time.textContent = isDraft ? "変換中..." : formatMessageTime(message.timestamp);
 
     const text = document.createElement("p");
     text.className = "message-text";
