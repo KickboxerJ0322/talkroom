@@ -95,7 +95,8 @@ function exportTranscript() {
   const fileName = `talkroom-${state.roomId || "log"}-${new Date()
     .toISOString()
     .replace(/[:.]/g, "-")}.txt`;
-  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const utf8Bom = new Uint8Array([0xef, 0xbb, 0xbf]);
+  const blob = new Blob([utf8Bom, text], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
