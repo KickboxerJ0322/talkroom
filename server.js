@@ -69,10 +69,24 @@ function normalizeTranscriptFromResponse(payload) {
     .trim();
 }
 
-async function transcribeAudio(buffer, languageCode = "ja-JP") {
+function parsePositiveInteger(value) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+async function transcribeAudio({
+  buffer,
+  languageCode = "ja-JP",
+  encoding = "LINEAR16",
+  sampleRateHertz
+}) {
   const apiKey = getSpeechApiKey();
   if (!apiKey) {
     throw new Error("Google Cloud Speech-to-Text の API キーが未設定です。");
+  }
+
+  if (!sampleRateHertz) {
+    throw new Error("音声のサンプルレートが取得できませんでした。");
   }
 
   const response = await fetch(`${GOOGLE_STT_ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
@@ -82,7 +96,9 @@ async function transcribeAudio(buffer, languageCode = "ja-JP") {
     },
     body: JSON.stringify({
       config: {
+        encoding,
         languageCode,
+        sampleRateHertz,
         enableAutomaticPunctuation: true,
         model: "default"
       },
@@ -132,13 +148,32 @@ app.post(
     }
 
     const languageCodeHeader = req.get("X-Language-Code");
+    const encodingHeader = req.get("X-Audio-Encoding");
+    const sampleRateHeader = req.get("X-Sample-Rate-Hz");
     const languageCode =
       typeof languageCodeHeader === "string" && languageCodeHeader.trim()
         ? languageCodeHeader.trim()
         : "ja-JP";
+    const encoding =
+      typeof encodingHeader === "string" && encodingHeader.trim()
+        ? encodingHeader.trim()
+        : "LINEAR16";
+    const sampleRateHertz = parsePositiveInteger(sampleRateHeader);
+
+    if (!sampleRateHertz) {
+      res.status(400).json({
+        message: "音声のサンプルレートが不正です。"
+      });
+      return;
+    }
 
     try {
-      const text = await transcribeAudio(req.body, languageCode);
+      const text = await transcribeAudio({
+        buffer: req.body,
+        languageCode,
+        encoding,
+        sampleRateHertz
+      });
       res.json({ text });
     } catch (error) {
       res.status(502).json({

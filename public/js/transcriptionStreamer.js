@@ -13,35 +13,12 @@ function mergeFloat32Chunks(chunks, length) {
   return merged;
 }
 
-function encodeWav(samples, sampleRate) {
+function encodeLinear16(samples) {
   const bytesPerSample = 2;
-  const blockAlign = bytesPerSample;
-  const byteRate = sampleRate * blockAlign;
   const dataSize = samples.length * bytesPerSample;
-  const buffer = new ArrayBuffer(44 + dataSize);
+  const buffer = new ArrayBuffer(dataSize);
   const view = new DataView(buffer);
-
-  function writeString(offset, value) {
-    for (let index = 0; index < value.length; index += 1) {
-      view.setUint8(offset + index, value.charCodeAt(index));
-    }
-  }
-
-  writeString(0, "RIFF");
-  view.setUint32(4, 36 + dataSize, true);
-  writeString(8, "WAVE");
-  writeString(12, "fmt ");
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, byteRate, true);
-  view.setUint16(32, blockAlign, true);
-  view.setUint16(34, 16, true);
-  writeString(36, "data");
-  view.setUint32(40, dataSize, true);
-
-  let offset = 44;
+  let offset = 0;
   for (let index = 0; index < samples.length; index += 1) {
     const sample = Math.max(-1, Math.min(1, samples[index]));
     view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
@@ -168,14 +145,16 @@ export class TranscriptionStreamer {
   }
 
   async sendChunk(samples) {
-    const wavBuffer = encodeWav(samples, this.sampleRate);
+    const pcmBuffer = encodeLinear16(samples);
     const response = await fetch("/api/transcribe", {
       method: "POST",
       headers: {
-        "Content-Type": "audio/wav",
-        "X-Language-Code": this.languageCode
+        "Content-Type": "application/octet-stream",
+        "X-Audio-Encoding": "LINEAR16",
+        "X-Language-Code": this.languageCode,
+        "X-Sample-Rate-Hz": String(Math.round(this.sampleRate))
       },
-      body: wavBuffer
+      body: pcmBuffer
     });
 
     if (!response.ok) {
