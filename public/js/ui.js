@@ -35,10 +35,15 @@ export class UIController {
     this.errorText = document.getElementById("errorText");
     this.callTimer = document.getElementById("callTimer");
     this.muteButton = document.getElementById("muteButton");
+    this.cameraButton = document.getElementById("cameraButton");
     this.speakerButton = document.getElementById("speakerButton");
     this.hangupButton = document.getElementById("hangupButton");
     this.exportTranscriptButton = document.getElementById("exportTranscriptButton");
     this.resetAppButton = document.getElementById("resetAppButton");
+    this.videoStage = document.getElementById("videoStage");
+    this.remoteVideo = document.getElementById("remoteVideo");
+    this.localVideo = document.getElementById("localVideo");
+    this.videoEmptyState = document.getElementById("videoEmptyState");
     this.remoteAudio = document.getElementById("remoteAudio");
     this.transcriptStatus = document.getElementById("transcriptStatus");
     this.transcriptTimeline = document.getElementById("transcriptTimeline");
@@ -98,6 +103,7 @@ export class UIController {
 
   setCallControlsDisabled(disabled) {
     this.muteButton.disabled = disabled;
+    this.cameraButton.disabled = disabled;
     this.speakerButton.disabled = disabled;
     this.hangupButton.disabled = disabled;
   }
@@ -108,6 +114,10 @@ export class UIController {
 
   setMuteButtonLabel(isMicEnabled) {
     this.muteButton.textContent = isMicEnabled ? "マイクOFF" : "マイクON";
+  }
+
+  setCameraButtonLabel(isCameraEnabled) {
+    this.cameraButton.textContent = isCameraEnabled ? "カメラOFF" : "カメラON";
   }
 
   setSpeakerButtonLabel(isSpeakerEnabled) {
@@ -185,10 +195,44 @@ export class UIController {
 
   attachRemoteStream(stream) {
     this.remoteAudio.srcObject = stream;
+    this.remoteVideo.srcObject = stream;
+    this.syncVideoPanels({ localStream: this.localVideo.srcObject, remoteStream: stream });
   }
 
   clearRemoteStream() {
     this.remoteAudio.srcObject = null;
+    this.remoteVideo.srcObject = null;
+    this.syncVideoPanels({ localStream: this.localVideo.srcObject, remoteStream: null });
+  }
+
+  attachLocalPreview(stream) {
+    this.localVideo.srcObject = stream;
+    this.syncVideoPanels({ localStream: stream, remoteStream: this.remoteVideo.srcObject });
+  }
+
+  clearLocalPreview() {
+    this.localVideo.srcObject = null;
+    this.syncVideoPanels({ localStream: null, remoteStream: this.remoteVideo.srcObject });
+  }
+
+  syncVideoPanels({ localStream, remoteStream }) {
+    const hasLocalVideo = this.hasLiveVideoTrack(localStream);
+    const hasRemoteVideo = this.hasLiveVideoTrack(remoteStream);
+
+    this.videoStage.hidden = !hasLocalVideo && !hasRemoteVideo;
+    this.videoEmptyState.hidden = hasLocalVideo || hasRemoteVideo;
+    this.localVideo.hidden = !hasLocalVideo;
+    this.remoteVideo.hidden = !hasRemoteVideo;
+  }
+
+  hasLiveVideoTrack(stream) {
+    if (!stream) {
+      return false;
+    }
+
+    return stream
+      .getVideoTracks()
+      .some((track) => track.readyState === "live" && track.enabled !== false);
   }
 
   startTimer() {

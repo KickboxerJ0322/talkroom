@@ -8,6 +8,7 @@ export function createInitialState() {
     socketConnected: false,
     callConnected: false,
     micEnabled: true,
+    cameraEnabled: false,
     rtcConfiguration: { iceServers: [] },
     transcriptMessages: [],
     transcriptDrafts: {

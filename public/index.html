@@ -67,13 +67,20 @@
           <span id="statusText" class="status-text">待機中</span>
         </div>
 
-        <p id="presenceText" class="presence-text">ルームに参加すると状態がここに表示されます。</p>
+        <p id="presenceText" class="presence-text">ルームに参加すると状況がここに表示されます。</p>
         <p id="errorText" class="error-text" hidden></p>
+
+        <div id="videoStage" class="video-stage" hidden>
+          <video id="remoteVideo" class="remote-video" autoplay playsinline hidden></video>
+          <video id="localVideo" class="local-video" autoplay muted playsinline hidden></video>
+          <div id="videoEmptyState" class="video-empty" hidden>カメラをONにすると映像が表示されます。</div>
+        </div>
 
         <div class="timer" id="callTimer">00:00</div>
 
         <div class="actions">
           <button id="muteButton" class="secondary-button" type="button" disabled>マイクOFF</button>
+          <button id="cameraButton" class="secondary-button" type="button" disabled>カメラON</button>
           <button id="speakerButton" class="secondary-button" type="button" disabled>スピーカーOFF</button>
           <button id="hangupButton" class="danger-button" type="button" disabled>通話を終了</button>
         </div>

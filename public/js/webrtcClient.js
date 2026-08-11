@@ -5,6 +5,7 @@ export class WebRtcClient {
     this.onTrack = onTrack;
     this.onConnectionStateChange = onConnectionStateChange;
     this.peerConnection = null;
+    this.videoSender = null;
   }
 
   createPeerConnection(localStream) {
@@ -12,7 +13,10 @@ export class WebRtcClient {
     this.peerConnection = new RTCPeerConnection(this.rtcConfiguration);
 
     localStream.getTracks().forEach((track) => {
-      this.peerConnection.addTrack(track, localStream);
+      const sender = this.peerConnection.addTrack(track, localStream);
+      if (track.kind === "video") {
+        this.videoSender = sender;
+      }
     });
 
     this.peerConnection.onicecandidate = (event) => {
@@ -56,6 +60,27 @@ export class WebRtcClient {
     await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
   }
 
+  async addOrReplaceVideoTrack(videoTrack, stream) {
+    if (!this.peerConnection) {
+      return;
+    }
+
+    if (this.videoSender) {
+      await this.videoSender.replaceTrack(videoTrack);
+      return;
+    }
+
+    this.videoSender = this.peerConnection.addTrack(videoTrack, stream);
+  }
+
+  async clearVideoTrack() {
+    if (!this.videoSender) {
+      return;
+    }
+
+    await this.videoSender.replaceTrack(null);
+  }
+
   close() {
     if (this.peerConnection) {
       this.peerConnection.onicecandidate = null;
@@ -64,5 +89,7 @@ export class WebRtcClient {
       this.peerConnection.close();
       this.peerConnection = null;
     }
+
+    this.videoSender = null;
   }
 }

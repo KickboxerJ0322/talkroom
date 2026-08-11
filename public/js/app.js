@@ -15,11 +15,22 @@ const MEDIA_CONSTRAINTS = {
   },
   video: false
 };
+const CAMERA_CONSTRAINTS = {
+  audio: false,
+  video: {
+    facingMode: "user",
+    width: { ideal: 640 },
+    height: { ideal: 360 }
+  }
+};
 
 const state = createInitialState();
 state.speakerEnabled = true;
+
 const ui = new UIController();
 const socketClient = new SocketClient(io({ autoConnect: true }));
+const observedVideoTracks = new WeakSet();
+
 let webRtcClient = null;
 let transcriptionStreamer = null;
 
@@ -53,6 +64,30 @@ function setTranscriptStatus() {
   ui.setTranscriptStatus({
     supported: state.transcriptSupported,
     listening: state.transcriptListening
+  });
+}
+
+function syncVideoPanels() {
+  ui.syncVideoPanels({
+    localStream: state.localStream,
+    remoteStream: state.remoteStream
+  });
+}
+
+function observeVideoTracks(stream) {
+  if (!stream) {
+    return;
+  }
+
+  stream.getVideoTracks().forEach((track) => {
+    if (observedVideoTracks.has(track)) {
+      return;
+    }
+
+    observedVideoTracks.add(track);
+    track.addEventListener("ended", syncVideoPanels);
+    track.addEventListener("mute", syncVideoPanels);
+    track.addEventListener("unmute", syncVideoPanels);
   });
 }
 
@@ -106,6 +141,16 @@ function exportTranscript() {
   URL.revokeObjectURL(url);
 }
 
+function resetMediaControls() {
+  state.micEnabled = true;
+  state.cameraEnabled = false;
+  state.speakerEnabled = true;
+  ui.setMuteButtonLabel(true);
+  ui.setCameraButtonLabel(false);
+  ui.setSpeakerButtonLabel(true);
+  ui.remoteAudio.muted = false;
+}
+
 async function resetApp() {
   if (state.roomId) {
     socketClient.emit("leave-room");
@@ -115,13 +160,10 @@ async function resetApp() {
   stopLocalStream();
   resetTranscriptState();
   ui.clearError();
-  ui.setMuteButtonLabel(true);
-  ui.setSpeakerButtonLabel(true);
-  ui.remoteAudio.muted = false;
-  state.speakerEnabled = true;
+  resetMediaControls();
   ui.resetForm();
   ui.setStatus("waiting", state.socketConnected ? "待機中" : "未接続");
-  ui.setPresence("ルームに参加すると状態がここに表示されます。");
+  ui.setPresence("ルームに参加すると状況がここに表示されます。");
 }
 
 function createTranscriptionStreamer() {
@@ -213,10 +255,9 @@ async function ensureLocalAudio() {
 
   try {
     state.localStream = await navigator.mediaDevices.getUserMedia(MEDIA_CONSTRAINTS);
-    state.micEnabled = true;
-    state.speakerEnabled = true;
-    ui.setMuteButtonLabel(true);
-    ui.setSpeakerButtonLabel(true);
+    resetMediaControls();
+    ui.attachLocalPreview(state.localStream);
+    syncVideoPanels();
     return state.localStream;
   } catch (error) {
     if (error && (error.name === "NotAllowedError" || error.name === "PermissionDeniedError")) {
@@ -234,6 +275,25 @@ function resetRoomState() {
   ui.setJoinDisabled(false);
 }
 
+function releaseLocalVideoTrack() {
+  if (!state.localStream) {
+    state.cameraEnabled = false;
+    ui.setCameraButtonLabel(false);
+    ui.clearLocalPreview();
+    syncVideoPanels();
+    return;
+  }
+
+  state.localStream.getVideoTracks().forEach((track) => {
+    state.localStream.removeTrack(track);
+    track.stop();
+  });
+  state.cameraEnabled = false;
+  ui.setCameraButtonLabel(false);
+  ui.attachLocalPreview(state.localStream);
+  syncVideoPanels();
+}
+
 async function teardownCall({ keepRoom = false } = {}) {
   await stopTranscription();
 
@@ -247,11 +307,13 @@ async function teardownCall({ keepRoom = false } = {}) {
   state.remoteStream = null;
   state.callConnected = false;
   state.transcriptDrafts.remote = "";
+  releaseLocalVideoTrack();
   ui.clearRemoteStream();
+  syncVideoPanels();
   ui.stopTimer();
   ui.setCallControlsDisabled(true);
   ui.setStatus("waiting", state.socketConnected ? "待機中" : "未接続");
-  ui.setPresence(keepRoom ? "相手を待っています。" : "ルームに参加すると状態がここに表示されます。");
+  ui.setPresence(keepRoom ? "相手を待っています。" : "ルームに参加すると状況がここに表示されます。");
   renderTranscript();
 
   if (!keepRoom) {
@@ -261,11 +323,16 @@ async function teardownCall({ keepRoom = false } = {}) {
 
 function stopLocalStream() {
   if (!state.localStream) {
+    resetMediaControls();
+    ui.clearLocalPreview();
     return;
   }
 
+  releaseLocalVideoTrack();
   state.localStream.getTracks().forEach((track) => track.stop());
   state.localStream = null;
+  resetMediaControls();
+  ui.clearLocalPreview();
 }
 
 function initializeWebRtcClient() {
@@ -279,7 +346,9 @@ function initializeWebRtcClient() {
     },
     onTrack: (stream) => {
       state.remoteStream = stream;
+      observeVideoTracks(stream);
       ui.attachRemoteStream(stream);
+      syncVideoPanels();
     },
     onConnectionStateChange: async (connectionState) => {
       if (connectionState === "connected") {
@@ -312,6 +381,78 @@ async function preparePeerConnection() {
   state.peerConnection = rtc.createPeerConnection(localStream);
 }
 
+async function renegotiatePeerConnection() {
+  if (!webRtcClient || !state.peerConnection || !state.roomId) {
+    return;
+  }
+
+  const offer = await webRtcClient.createOffer();
+  socketClient.emit("offer", { roomId: state.roomId, offer });
+}
+
+async function enableCamera() {
+  await ensureLocalAudio();
+
+  let videoTrack = state.localStream.getVideoTracks()[0];
+  if (!videoTrack) {
+    let cameraStream;
+    try {
+      cameraStream = await navigator.mediaDevices.getUserMedia(CAMERA_CONSTRAINTS);
+    } catch (error) {
+      if (error && (error.name === "NotAllowedError" || error.name === "PermissionDeniedError")) {
+        throw new Error("カメラの利用が許可されていません。ブラウザ設定を確認してください。");
+      }
+
+      throw new Error("カメラを利用できませんでした。");
+    }
+
+    videoTrack = cameraStream.getVideoTracks()[0];
+    state.localStream.addTrack(videoTrack);
+  }
+
+  videoTrack.enabled = true;
+  state.cameraEnabled = true;
+  observeVideoTracks(state.localStream);
+  ui.attachLocalPreview(state.localStream);
+
+  if (state.peerConnection && webRtcClient) {
+    await webRtcClient.addOrReplaceVideoTrack(videoTrack, state.localStream);
+    await renegotiatePeerConnection();
+  }
+
+  ui.setCameraButtonLabel(true);
+  syncVideoPanels();
+}
+
+async function disableCamera() {
+  if (!state.localStream) {
+    state.cameraEnabled = false;
+    ui.setCameraButtonLabel(false);
+    syncVideoPanels();
+    return;
+  }
+
+  const [videoTrack] = state.localStream.getVideoTracks();
+  if (!videoTrack) {
+    state.cameraEnabled = false;
+    ui.setCameraButtonLabel(false);
+    syncVideoPanels();
+    return;
+  }
+
+  if (state.peerConnection && webRtcClient) {
+    await webRtcClient.clearVideoTrack();
+    await renegotiatePeerConnection();
+  }
+
+  state.localStream.removeTrack(videoTrack);
+  videoTrack.stop();
+  state.cameraEnabled = false;
+  ui.setCameraButtonLabel(false);
+  ui.attachLocalPreview(state.localStream);
+  syncVideoPanels();
+}
+
 async function joinRoom() {
   const roomId = ui.getRoomIdInput();
   const pin = ui.getPinInput();
@@ -323,7 +464,9 @@ async function joinRoom() {
   }
 
   if (!ROOM_ID_PATTERN.test(roomId)) {
-    ui.showError("ルームIDは3〜32文字の英数字、ハイフン、アンダースコアで入力してください。");
+    ui.showError(
+      "ルームIDは3〜32文字の英数字、ハイフン、アンダースコアで入力してください。"
+    );
     return;
   }
 
@@ -351,10 +494,7 @@ async function leaveRoom() {
   await teardownCall();
   stopLocalStream();
   ui.clearError();
-  ui.setMuteButtonLabel(true);
-  ui.setSpeakerButtonLabel(true);
-  ui.remoteAudio.muted = false;
-  state.speakerEnabled = true;
+  resetMediaControls();
 }
 
 function toggleMute() {
@@ -367,6 +507,22 @@ function toggleMute() {
     track.enabled = state.micEnabled;
   });
   ui.setMuteButtonLabel(state.micEnabled);
+}
+
+async function toggleCamera() {
+  ui.cameraButton.disabled = true;
+
+  try {
+    if (state.cameraEnabled) {
+      await disableCamera();
+    } else {
+      await enableCamera();
+    }
+  } catch (error) {
+    ui.showError(error.message || "カメラの切り替えに失敗しました。");
+  } finally {
+    ui.cameraButton.disabled = !state.callConnected;
+  }
 }
 
 function toggleSpeaker() {
@@ -392,7 +548,7 @@ function registerSocketEvents() {
   socketClient.on("joined-room", ({ roomId, participantCount }) => {
     state.roomId = roomId;
     ui.setRoom(roomId);
-    ui.setPresence(participantCount === 1 ? "相手を待っています。" : "通話相手を認識しています。");
+    ui.setPresence(participantCount === 1 ? "相手を待っています。" : "通話相手を準備しています。");
   });
 
   socketClient.on("waiting-peer", ({ message }) => {
@@ -402,19 +558,19 @@ function registerSocketEvents() {
 
   socketClient.on("peer-present", async () => {
     ui.setStatus("waiting", "接続中");
-    ui.setPresence("通話相手を認識しています。");
+    ui.setPresence("通話相手を準備しています。");
     await preparePeerConnection();
   });
 
   socketClient.on("peer-joined", async () => {
     try {
       ui.setStatus("waiting", "接続中");
-      ui.setPresence("通話相手を認識しています。");
+      ui.setPresence("通話相手を準備しています。");
       await preparePeerConnection();
       const offer = await webRtcClient.createOffer();
       socketClient.emit("offer", { roomId: state.roomId, offer });
     } catch (error) {
-      ui.showError(error.message || "通話接続の準備に失敗しました。");
+      ui.showError(error.message || "通話相手の準備に失敗しました。");
       await teardownCall({ keepRoom: true });
     }
   });
@@ -484,9 +640,11 @@ async function init() {
   try {
     await fetchAppConfiguration();
     ui.remoteAudio.volume = isMobileDevice() ? 0.34 : 0.56;
+    resetMediaControls();
     registerSocketEvents();
     renderTranscript();
     setTranscriptStatus();
+    syncVideoPanels();
     ui.setTranscriptActionsDisabled(true);
 
     ui.joinForm.addEventListener("submit", async (event) => {
@@ -501,6 +659,7 @@ async function init() {
     });
 
     ui.muteButton.addEventListener("click", toggleMute);
+    ui.cameraButton.addEventListener("click", toggleCamera);
     ui.speakerButton.addEventListener("click", toggleSpeaker);
     ui.hangupButton.addEventListener("click", leaveRoom);
     ui.exportTranscriptButton.addEventListener("click", exportTranscript);
