@@ -74,6 +74,14 @@ function syncVideoPanels() {
   });
 }
 
+function syncMediaStatus() {
+  ui.updateMediaStatus({
+    micEnabled: state.micEnabled,
+    speakerEnabled: state.speakerEnabled,
+    cameraEnabled: state.cameraEnabled
+  });
+}
+
 function observeVideoTracks(stream) {
   if (!stream) {
     return;
@@ -152,6 +160,7 @@ function resetMediaControls() {
   ui.remoteAudio.volume = 1;
   ui.remoteVideo.muted = true;
   ui.remoteVideo.volume = 0;
+  syncMediaStatus();
 }
 
 async function resetApp() {
@@ -166,7 +175,7 @@ async function resetApp() {
   resetMediaControls();
   ui.resetForm();
   ui.setStatus("waiting", state.socketConnected ? "待機中" : "未接続");
-  ui.setPresence("ルームに参加すると状況がここに表示されます。");
+  ui.setPresence("");
 }
 
 function createTranscriptionStreamer() {
@@ -196,7 +205,7 @@ function createTranscriptionStreamer() {
       setTranscriptStatus();
     },
     onError: (error) => {
-      ui.showError(error.message || "音声文字起こしに失敗しました。");
+      ui.showError(error.message || "文字起こし処理でエラーが発生しました。");
       state.transcriptListening = false;
       setTranscriptStatus();
     }
@@ -219,7 +228,7 @@ async function startTranscription({ force = false } = {}) {
   try {
     await transcriptionStreamer.start();
   } catch (error) {
-    ui.showError(error.message || "音声文字起こしを開始できませんでした。");
+    ui.showError(error.message || "文字起こしを開始できませんでした。");
     state.transcriptListening = false;
     setTranscriptStatus();
   }
@@ -264,7 +273,7 @@ async function ensureLocalAudio() {
     return state.localStream;
   } catch (error) {
     if (error && (error.name === "NotAllowedError" || error.name === "PermissionDeniedError")) {
-      throw new Error("マイクの利用が許可されていません。ブラウザ設定を確認してください。");
+      throw new Error("マイクの使用が許可されていません。ブラウザ設定を確認してください。");
     }
 
     throw new Error("マイクを利用できませんでした。");
@@ -282,6 +291,7 @@ function releaseLocalVideoTrack() {
   if (!state.localStream) {
     state.cameraEnabled = false;
     ui.setCameraButtonLabel(false);
+    syncMediaStatus();
     ui.clearLocalPreview();
     syncVideoPanels();
     return;
@@ -293,6 +303,7 @@ function releaseLocalVideoTrack() {
   });
   state.cameraEnabled = false;
   ui.setCameraButtonLabel(false);
+  syncMediaStatus();
   ui.attachLocalPreview(state.localStream);
   syncVideoPanels();
 }
@@ -316,7 +327,7 @@ async function teardownCall({ keepRoom = false } = {}) {
   ui.stopTimer();
   ui.setCallControlsDisabled(true);
   ui.setStatus("waiting", state.socketConnected ? "待機中" : "未接続");
-  ui.setPresence(keepRoom ? "相手を待っています。" : "ルームに参加すると状況がここに表示されます。");
+  ui.setPresence("");
   renderTranscript();
 
   if (!keepRoom) {
@@ -358,14 +369,14 @@ function initializeWebRtcClient() {
         state.callConnected = true;
         ui.clearError();
         ui.setStatus("connected", "通話中");
-        ui.setPresence("音声接続が完了しました。");
+        ui.setPresence("");
         ui.setCallControlsDisabled(false);
         ui.startTimer();
         await startTranscription();
       }
 
       if (["failed", "disconnected"].includes(connectionState)) {
-        ui.showError("接続に失敗しました。通信環境を確認してください。");
+        ui.showError("通話接続に失敗しました。再接続を試してください。");
         await teardownCall({ keepRoom: true });
       }
 
@@ -403,7 +414,7 @@ async function enableCamera() {
       cameraStream = await navigator.mediaDevices.getUserMedia(CAMERA_CONSTRAINTS);
     } catch (error) {
       if (error && (error.name === "NotAllowedError" || error.name === "PermissionDeniedError")) {
-        throw new Error("カメラの利用が許可されていません。ブラウザ設定を確認してください。");
+        throw new Error("カメラの使用が許可されていません。ブラウザ設定を確認してください。");
       }
 
       throw new Error("カメラを利用できませんでした。");
@@ -424,6 +435,7 @@ async function enableCamera() {
   }
 
   ui.setCameraButtonLabel(true);
+  syncMediaStatus();
   syncVideoPanels();
 }
 
@@ -431,6 +443,7 @@ async function disableCamera() {
   if (!state.localStream) {
     state.cameraEnabled = false;
     ui.setCameraButtonLabel(false);
+    syncMediaStatus();
     syncVideoPanels();
     return;
   }
@@ -439,6 +452,7 @@ async function disableCamera() {
   if (!videoTrack) {
     state.cameraEnabled = false;
     ui.setCameraButtonLabel(false);
+    syncMediaStatus();
     syncVideoPanels();
     return;
   }
@@ -452,6 +466,7 @@ async function disableCamera() {
   videoTrack.stop();
   state.cameraEnabled = false;
   ui.setCameraButtonLabel(false);
+  syncMediaStatus();
   ui.attachLocalPreview(state.localStream);
   syncVideoPanels();
 }
@@ -467,14 +482,12 @@ async function joinRoom() {
   }
 
   if (!ROOM_ID_PATTERN.test(roomId)) {
-    ui.showError(
-      "ルームIDは3〜32文字の英数字、ハイフン、アンダースコアで入力してください。"
-    );
+    ui.showError("ルームIDは 3 から 32 文字の英数字、ハイフン、アンダースコアで入力してください。");
     return;
   }
 
   if (!PIN_PATTERN.test(pin)) {
-    ui.showError("PINは4〜8桁の数字で入力してください。");
+    ui.showError("PIN は 4 から 8 桁の数字で入力してください。");
     return;
   }
 
@@ -485,7 +498,7 @@ async function joinRoom() {
   ui.setRoom(roomId);
   ui.setJoinDisabled(true);
   ui.setStatus("waiting", "接続中");
-  ui.setPresence("相手を待っています。");
+  ui.setPresence("");
   resetTranscriptState();
   await startTranscription({ force: true });
 
@@ -510,6 +523,7 @@ function toggleMute() {
     track.enabled = state.micEnabled;
   });
   ui.setMuteButtonLabel(state.micEnabled);
+  syncMediaStatus();
 }
 
 async function toggleCamera() {
@@ -522,7 +536,7 @@ async function toggleCamera() {
       await enableCamera();
     }
   } catch (error) {
-    ui.showError(error.message || "カメラの切り替えに失敗しました。");
+    ui.showError(error.message || "カメラ切り替えに失敗しました。");
   } finally {
     ui.cameraButton.disabled = !state.callConnected;
   }
@@ -535,6 +549,7 @@ function toggleSpeaker() {
   ui.remoteVideo.muted = true;
   ui.remoteVideo.volume = 0;
   ui.setSpeakerButtonLabel(state.speakerEnabled);
+  syncMediaStatus();
 }
 
 function registerSocketEvents() {
@@ -542,41 +557,42 @@ function registerSocketEvents() {
     state.socketConnected = true;
     if (!state.callConnected) {
       ui.setStatus("waiting", "待機中");
+      ui.setPresence("");
     }
   });
 
   socketClient.on("disconnect", async () => {
     state.socketConnected = false;
-    ui.showError("Socket.IO接続が切れました。ページを再読み込みして再接続してください。");
+    ui.showError("Socket.IO 接続が切れました。ページを再読み込みして再接続してください。");
     await teardownCall({ keepRoom: true });
   });
 
-  socketClient.on("joined-room", ({ roomId, participantCount }) => {
+  socketClient.on("joined-room", ({ roomId }) => {
     state.roomId = roomId;
     ui.setRoom(roomId);
-    ui.setPresence(participantCount === 1 ? "相手を待っています。" : "通話相手を準備しています。");
+    ui.setPresence("");
   });
 
-  socketClient.on("waiting-peer", ({ message }) => {
+  socketClient.on("waiting-peer", () => {
     ui.setStatus("waiting", "待機中");
-    ui.setPresence(message);
+    ui.setPresence("");
   });
 
   socketClient.on("peer-present", async () => {
     ui.setStatus("waiting", "接続中");
-    ui.setPresence("通話相手を準備しています。");
+    ui.setPresence("");
     await preparePeerConnection();
   });
 
   socketClient.on("peer-joined", async () => {
     try {
       ui.setStatus("waiting", "接続中");
-      ui.setPresence("通話相手を準備しています。");
+      ui.setPresence("");
       await preparePeerConnection();
       const offer = await webRtcClient.createOffer();
       socketClient.emit("offer", { roomId: state.roomId, offer });
     } catch (error) {
-      ui.showError(error.message || "通話相手の準備に失敗しました。");
+      ui.showError(error.message || "相手との接続準備に失敗しました。");
       await teardownCall({ keepRoom: true });
     }
   });
@@ -590,7 +606,7 @@ function registerSocketEvents() {
       const answer = await webRtcClient.handleOffer(offer);
       socketClient.emit("answer", { roomId: state.roomId, answer });
     } catch (_error) {
-      ui.showError("Offerの処理に失敗しました。");
+      ui.showError("Offer の処理に失敗しました。");
       await teardownCall({ keepRoom: true });
     }
   });
@@ -599,7 +615,7 @@ function registerSocketEvents() {
     try {
       await webRtcClient.handleAnswer(answer);
     } catch (_error) {
-      ui.showError("Answerの処理に失敗しました。");
+      ui.showError("Answer の処理に失敗しました。");
       await teardownCall({ keepRoom: true });
     }
   });
@@ -610,7 +626,7 @@ function registerSocketEvents() {
         await webRtcClient.addIceCandidate(candidate);
       }
     } catch (_error) {
-      ui.showError("ICE Candidateの処理に失敗しました。");
+      ui.showError("ICE Candidate の処理に失敗しました。");
     }
   });
 
@@ -651,6 +667,7 @@ async function init() {
     renderTranscript();
     setTranscriptStatus();
     syncVideoPanels();
+    syncMediaStatus();
     ui.setTranscriptActionsDisabled(true);
 
     ui.joinForm.addEventListener("submit", async (event) => {

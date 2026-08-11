@@ -34,6 +34,9 @@ export class UIController {
     this.presenceText = document.getElementById("presenceText");
     this.errorText = document.getElementById("errorText");
     this.callTimer = document.getElementById("callTimer");
+    this.micStatus = document.getElementById("micStatus");
+    this.speakerStatus = document.getElementById("speakerStatus");
+    this.cameraStatus = document.getElementById("cameraStatus");
     this.muteButton = document.getElementById("muteButton");
     this.cameraButton = document.getElementById("cameraButton");
     this.speakerButton = document.getElementById("speakerButton");
@@ -82,7 +85,8 @@ export class UIController {
   }
 
   setPresence(text) {
-    this.presenceText.textContent = text;
+    this.presenceText.hidden = !text;
+    this.presenceText.textContent = text || "";
   }
 
   showError(message) {
@@ -125,12 +129,27 @@ export class UIController {
     this.speakerButton.textContent = isSpeakerEnabled ? "スピーカーOFF" : "スピーカーON";
   }
 
+  updateMediaStatus({ micEnabled, speakerEnabled, cameraEnabled }) {
+    this.setMediaPill(this.micStatus, "マイク", micEnabled);
+    this.setMediaPill(this.speakerStatus, "スピーカー", speakerEnabled);
+    this.setMediaPill(this.cameraStatus, "カメラ", cameraEnabled);
+  }
+
+  setMediaPill(element, label, enabled) {
+    if (!element) {
+      return;
+    }
+
+    element.textContent = `${label}: ${enabled ? "ON" : "OFF"}`;
+    element.classList.toggle("off", !enabled);
+  }
+
   setTranscriptStatus({ supported, listening }) {
     this.transcriptStatus.classList.remove("supported", "listening", "unsupported");
 
     if (!supported) {
       this.transcriptStatus.classList.add("unsupported");
-      this.transcriptStatus.textContent = "文字起こし未設定";
+      this.transcriptStatus.textContent = "文字起こし未対応";
       return;
     }
 
