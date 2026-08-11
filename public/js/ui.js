@@ -148,7 +148,7 @@ export class UIController {
 
     const speaker = document.createElement("span");
     speaker.className = "speaker-name";
-    speaker.textContent = message.speaker === "local" ? "あなた" : "相手";
+    speaker.textContent = message.speaker === "local" ? "自分" : "相手";
 
     const time = document.createElement("span");
     time.className = "message-time";

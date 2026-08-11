@@ -6,7 +6,12 @@ import { WebRtcClient } from "./webrtcClient.js";
 const ROOM_ID_PATTERN = /^[A-Za-z0-9_-]{3,32}$/;
 const PIN_PATTERN = /^\d{4,8}$/;
 const MEDIA_CONSTRAINTS = {
-  audio: true,
+  audio: {
+    channelCount: 1,
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true
+  },
   video: false
 };
 
@@ -17,6 +22,11 @@ const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRec
 let webRtcClient = null;
 let speechRecognition = null;
 let suppressSpeechRestart = false;
+let speechStartedByGesture = false;
+
+function isMobileDevice() {
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
 
 function renderTranscript() {
   ui.renderTranscript(state.transcriptMessages, state.transcriptDrafts);
@@ -109,7 +119,7 @@ function createSpeechRecognition() {
     state.transcriptListening = false;
     setTranscriptStatus();
 
-    if (state.callConnected && !suppressSpeechRestart) {
+    if ((state.callConnected || speechStartedByGesture) && !suppressSpeechRestart) {
       try {
         recognition.start();
       } catch (_error) {
@@ -125,8 +135,12 @@ function createSpeechRecognition() {
   return recognition;
 }
 
-function startSpeechRecognition() {
+function startSpeechRecognition({ force = false } = {}) {
   if (!state.transcriptSupported || !speechRecognition) {
+    return;
+  }
+
+  if (!state.callConnected && !force) {
     return;
   }
 
@@ -146,6 +160,7 @@ function stopSpeechRecognition() {
   }
 
   suppressSpeechRestart = true;
+  speechStartedByGesture = false;
   state.transcriptDrafts.local = "";
   socketClient.emit("transcript-interim", {
     roomId: state.roomId,
@@ -302,6 +317,10 @@ async function joinRoom() {
   ui.setStatus("waiting", "接続中");
   ui.setPresence("相手を待っています。");
   resetTranscriptState();
+  if (state.transcriptSupported && !speechStartedByGesture) {
+    speechStartedByGesture = true;
+    startSpeechRecognition({ force: true });
+  }
 
   socketClient.emit("join-room", { roomId, pin });
 }
@@ -431,6 +450,7 @@ async function init() {
   try {
     await fetchRtcConfiguration();
     speechRecognition = createSpeechRecognition();
+    ui.remoteAudio.volume = isMobileDevice() ? 0.38 : 0.62;
     registerSocketEvents();
     renderTranscript();
 

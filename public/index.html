@@ -4,17 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Talkroom</title>
-    <link rel="icon" type="image/png" href="/talkroom_icon.png" />
+    <link rel="icon" type="image/png" href="/room_icon.png" />
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
     <main class="app-shell">
       <section class="card join-card" aria-labelledby="app-title">
         <div class="brand-row">
-          <img class="brand-icon" src="/talkroom_icon.png" alt="Talkroom icon" />
+          <img class="brand-icon" src="/room_icon.png" alt="Talkroom icon" />
           <div>
             <h1 id="app-title">Talkroom</h1>
-            <p class="lead">ルームIDとPINを共有して、2人で音声通話とリアルタイム文字起こしを行えます。</p>
           </div>
         </div>
 
@@ -28,7 +27,8 @@
             inputmode="text"
             maxlength="32"
             autocomplete="off"
-            placeholder="junpei123"
+            value="001"
+            placeholder="001"
             aria-describedby="roomHelp"
           />
           <p id="roomHelp" class="help-text">
