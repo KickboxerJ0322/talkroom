@@ -148,6 +148,7 @@ export class UIController {
 
     if (messages.length === 0 && !drafts.local && !drafts.remote) {
       this.transcriptTimeline.append(this.emptyTranscript);
+      this.transcriptTimeline.scrollTop = 0;
       return;
     }
 
@@ -162,6 +163,7 @@ export class UIController {
     ];
 
     rows.forEach((row) => this.transcriptTimeline.append(row));
+    this.transcriptTimeline.scrollTop = this.transcriptTimeline.scrollHeight;
   }
 
   createTranscriptRow(message, isDraft) {

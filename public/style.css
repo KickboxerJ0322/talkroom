@@ -228,13 +228,17 @@ button:not(:disabled):active {
 
 .video-stage {
   position: relative;
-  min-height: 212px;
+  width: 100%;
+  max-width: 420px;
+  min-height: 188px;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   border-radius: 24px;
   border: 1px solid rgba(225, 193, 78, 0.18);
   background:
     radial-gradient(circle at top, rgba(255, 240, 181, 0.42), transparent 42%),
     linear-gradient(180deg, rgba(96, 70, 3, 0.92), rgba(52, 35, 2, 0.96));
+  margin: 0 auto;
 }
 
 .remote-video,
@@ -246,7 +250,7 @@ button:not(:disabled):active {
 }
 
 .remote-video {
-  min-height: 212px;
+  min-height: 188px;
 }
 
 .local-video {
@@ -275,12 +279,15 @@ button:not(:disabled):active {
 }
 
 .actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
-  flex-wrap: wrap;
 }
 
 .actions > button {
-  flex: 1 1 180px;
+  width: 100%;
+  min-height: 52px;
+  white-space: nowrap;
 }
 
 .error-text {
@@ -342,14 +349,20 @@ button:not(:disabled):active {
   display: grid;
   gap: 12px;
   min-height: 220px;
+  max-height: 520px;
   padding: 14px;
   border-radius: 24px;
   background: var(--timeline-bg);
   border: 1px solid rgba(225, 193, 78, 0.18);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  align-content: start;
 }
 
 .empty-transcript {
-  margin: auto;
+  min-height: 220px;
+  display: grid;
+  place-items: center;
   text-align: center;
   color: var(--text-secondary);
   line-height: 1.6;
@@ -438,6 +451,10 @@ button:not(:disabled):active {
   .local-video {
     width: min(36%, 132px);
   }
+
+  .actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 480px) {
@@ -450,17 +467,21 @@ button:not(:disabled):active {
     border-radius: 24px;
   }
 
-  .actions {
-    flex-direction: column;
-  }
-
   .transcript-actions {
     flex-direction: column;
   }
 
-  .actions > button,
+  .actions > button {
+    min-height: 50px;
+    padding: 14px 12px;
+  }
+
   .message-bubble {
     width: 100%;
     max-width: 100%;
+  }
+
+  .transcript-timeline {
+    max-height: 440px;
   }
 }
