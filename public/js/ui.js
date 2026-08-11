@@ -36,6 +36,8 @@ export class UIController {
     this.callTimer = document.getElementById("callTimer");
     this.muteButton = document.getElementById("muteButton");
     this.hangupButton = document.getElementById("hangupButton");
+    this.exportTranscriptButton = document.getElementById("exportTranscriptButton");
+    this.resetAppButton = document.getElementById("resetAppButton");
     this.remoteAudio = document.getElementById("remoteAudio");
     this.transcriptStatus = document.getElementById("transcriptStatus");
     this.transcriptTimeline = document.getElementById("transcriptTimeline");
@@ -50,6 +52,11 @@ export class UIController {
 
   getPinInput() {
     return this.pinInput.value.trim();
+  }
+
+  resetForm() {
+    this.roomInput.value = "001";
+    this.pinInput.value = "";
   }
 
   setRoom(roomId) {
@@ -91,6 +98,10 @@ export class UIController {
   setCallControlsDisabled(disabled) {
     this.muteButton.disabled = disabled;
     this.hangupButton.disabled = disabled;
+  }
+
+  setTranscriptActionsDisabled(disabled) {
+    this.exportTranscriptButton.disabled = disabled;
   }
 
   setMuteButtonLabel(isMicEnabled) {

@@ -87,7 +87,12 @@ async function main() {
     events.some((event) => event.clientName === "bob" && event.eventName === "offer"),
     events.some((event) => event.clientName === "alice" && event.eventName === "answer"),
     events.some((event) => event.clientName === "alice" && event.eventName === "ice-candidate"),
-    events.some((event) => event.clientName === "charlie" && event.eventName === "room-full"),
+    events.some(
+      (event) =>
+        event.clientName === "charlie" &&
+        ((event.eventName === "room-full") ||
+          (event.eventName === "room-error" && event.payload?.code === "ROOM_LOCKED"))
+    ),
     events.some((event) => event.clientName === "alice" && event.eventName === "peer-left")
   ];
 

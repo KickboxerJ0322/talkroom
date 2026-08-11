@@ -81,7 +81,6 @@
       <section class="card transcript-card" aria-live="polite">
         <div class="transcript-header">
           <div>
-            <p class="section-kicker">Google Cloud STT</p>
             <h2 class="section-title">リアルタイム会話ログ</h2>
           </div>
           <span id="transcriptStatus" class="transcript-status unsupported">文字起こし未設定</span>
@@ -90,6 +89,11 @@
         <p class="help-text transcript-help">
           自分と相手の音声を分けて記録します。文字起こし結果は少しずつ反映されます。
         </p>
+
+        <div class="transcript-actions">
+          <button id="exportTranscriptButton" class="secondary-button" type="button">テキスト出力</button>
+          <button id="resetAppButton" class="ghost-button" type="button">リセット</button>
+        </div>
 
         <div id="transcriptTimeline" class="transcript-timeline" aria-label="会話ログ">
           <div class="empty-transcript" id="emptyTranscript">

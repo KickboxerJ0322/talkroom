@@ -136,7 +136,8 @@ h1 {
 
 .primary-button,
 .secondary-button,
-.danger-button {
+.danger-button,
+.ghost-button {
   border: none;
   border-radius: 18px;
   padding: 15px 18px;
@@ -157,6 +158,12 @@ h1 {
 .danger-button {
   background: rgba(199, 96, 45, 0.12);
   color: var(--danger);
+}
+
+.ghost-button {
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--text-secondary);
+  border: 1px solid rgba(225, 193, 78, 0.22);
 }
 
 button:disabled {
@@ -273,6 +280,15 @@ button:not(:disabled):active {
   margin: 0;
 }
 
+.transcript-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.transcript-actions > button {
+  flex: 1;
+}
+
 .transcript-timeline {
   display: grid;
   gap: 12px;
@@ -382,6 +398,10 @@ button:not(:disabled):active {
   }
 
   .actions {
+    flex-direction: column;
+  }
+
+  .transcript-actions {
     flex-direction: column;
   }
 

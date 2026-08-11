@@ -11,7 +11,7 @@ const DEFAULT_HTTPS_PORT = 3443;
 const GOOGLE_STT_ENDPOINT = "https://speech.googleapis.com/v1/speech:recognize";
 const ROOM_ID_PATTERN = /^[A-Za-z0-9_-]{3,32}$/;
 const PIN_PATTERN = /^\d{4,8}$/;
-const roomPins = new Map();
+const rooms = new Map();
 
 function getArgValue(flag) {
   const index = process.argv.indexOf(flag);
@@ -72,6 +72,18 @@ function normalizeTranscriptFromResponse(payload) {
 function parsePositiveInteger(value) {
   const parsed = Number.parseInt(value, 10);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function getOrCreateRoomRecord(roomId, pin) {
+  if (!rooms.has(roomId)) {
+    rooms.set(roomId, {
+      pin,
+      locked: false,
+      participantsSeen: 0
+    });
+  }
+
+  return rooms.get(roomId);
 }
 
 async function transcribeAudio({
@@ -217,10 +229,6 @@ function leaveCurrentRoom(socket, reason = "left") {
   socket.to(roomId).emit("peer-left", { reason });
   socket.to(roomId).emit("transcript-interim", { text: "" });
   emitRoomState(roomId);
-
-  if (getRoomSize(roomId) === 0) {
-    roomPins.delete(roomId);
-  }
 }
 
 function isAuthorizedRoomEvent(socket, roomId, payload) {
@@ -253,11 +261,19 @@ io.on("connection", (socket) => {
       leaveCurrentRoom(socket, "switched-room");
     }
 
-    const registeredPin = roomPins.get(normalizedRoomId);
-    if (registeredPin && registeredPin !== normalizedPin) {
+    const roomRecord = getOrCreateRoomRecord(normalizedRoomId, normalizedPin);
+    if (roomRecord.pin !== normalizedPin) {
       socket.emit("room-error", {
         code: "INVALID_PIN",
         message: "PINが一致しません。"
+      });
+      return;
+    }
+
+    if (roomRecord.locked) {
+      socket.emit("room-error", {
+        code: "ROOM_LOCKED",
+        message: "このルームは使用済みのため、再入室できません。"
       });
       return;
     }
@@ -272,13 +288,13 @@ io.on("connection", (socket) => {
     }
 
     const existingPeerIds = Array.from(io.sockets.adapter.rooms.get(normalizedRoomId) || []);
-    if (!registeredPin) {
-      roomPins.set(normalizedRoomId, normalizedPin);
-    }
-
     socket.join(normalizedRoomId);
     socket.data.roomId = normalizedRoomId;
     socket.data.pin = normalizedPin;
+    roomRecord.participantsSeen = Math.max(roomRecord.participantsSeen, currentSize + 1);
+    if (roomRecord.participantsSeen >= 2) {
+      roomRecord.locked = true;
+    }
 
     socket.emit("joined-room", {
       roomId: normalizedRoomId,

@@ -22,6 +22,24 @@ const socketClient = new SocketClient(io({ autoConnect: true }));
 let webRtcClient = null;
 let transcriptionStreamer = null;
 
+function buildTranscriptExport() {
+  if (state.transcriptMessages.length === 0) {
+    return "";
+  }
+
+  return state.transcriptMessages
+    .map((message) => {
+      const speaker = message.speaker === "local" ? "自分" : "相手";
+      const time = new Intl.DateTimeFormat("ja-JP", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      }).format(new Date(message.timestamp));
+      return `${speaker}\n${time}\n${message.text}\n`;
+    })
+    .join("\n");
+}
+
 function isMobileDevice() {
   return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
@@ -44,6 +62,7 @@ function resetTranscriptState() {
     remote: ""
   };
   renderTranscript();
+  ui.setTranscriptActionsDisabled(true);
 }
 
 function appendTranscriptMessage(speaker, text) {
@@ -59,11 +78,45 @@ function appendTranscriptMessage(speaker, text) {
   });
   state.transcriptDrafts[speaker] = "";
   renderTranscript();
+  ui.setTranscriptActionsDisabled(false);
 }
 
 function updateTranscriptDraft(speaker, text) {
   state.transcriptDrafts[speaker] = text.trim();
   renderTranscript();
+}
+
+function exportTranscript() {
+  const text = buildTranscriptExport();
+  if (!text) {
+    return;
+  }
+
+  const fileName = `talkroom-${state.roomId || "log"}-${new Date()
+    .toISOString()
+    .replace(/[:.]/g, "-")}.txt`;
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+async function resetApp() {
+  if (state.roomId) {
+    socketClient.emit("leave-room");
+  }
+
+  await teardownCall();
+  stopLocalStream();
+  resetTranscriptState();
+  ui.clearError();
+  ui.setMuteButtonLabel(true);
+  ui.resetForm();
+  ui.setStatus("waiting", state.socketConnected ? "待機中" : "未接続");
+  ui.setPresence("ルームに参加すると状態がここに表示されます。");
 }
 
 function createTranscriptionStreamer() {
@@ -418,6 +471,7 @@ async function init() {
     registerSocketEvents();
     renderTranscript();
     setTranscriptStatus();
+    ui.setTranscriptActionsDisabled(true);
 
     ui.joinForm.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -432,6 +486,8 @@ async function init() {
 
     ui.muteButton.addEventListener("click", toggleMute);
     ui.hangupButton.addEventListener("click", leaveRoom);
+    ui.exportTranscriptButton.addEventListener("click", exportTranscript);
+    ui.resetAppButton.addEventListener("click", resetApp);
   } catch (error) {
     ui.showError(error.message || "初期化に失敗しました。");
   }
