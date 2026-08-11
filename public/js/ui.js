@@ -35,6 +35,7 @@ export class UIController {
     this.errorText = document.getElementById("errorText");
     this.callTimer = document.getElementById("callTimer");
     this.muteButton = document.getElementById("muteButton");
+    this.speakerButton = document.getElementById("speakerButton");
     this.hangupButton = document.getElementById("hangupButton");
     this.exportTranscriptButton = document.getElementById("exportTranscriptButton");
     this.resetAppButton = document.getElementById("resetAppButton");
@@ -97,6 +98,7 @@ export class UIController {
 
   setCallControlsDisabled(disabled) {
     this.muteButton.disabled = disabled;
+    this.speakerButton.disabled = disabled;
     this.hangupButton.disabled = disabled;
   }
 
@@ -106,6 +108,10 @@ export class UIController {
 
   setMuteButtonLabel(isMicEnabled) {
     this.muteButton.textContent = isMicEnabled ? "マイクOFF" : "マイクON";
+  }
+
+  setSpeakerButtonLabel(isSpeakerEnabled) {
+    this.speakerButton.textContent = isSpeakerEnabled ? "スピーカーOFF" : "スピーカーON";
   }
 
   setTranscriptStatus({ supported, listening }) {

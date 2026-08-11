@@ -17,6 +17,7 @@ const MEDIA_CONSTRAINTS = {
 };
 
 const state = createInitialState();
+state.speakerEnabled = true;
 const ui = new UIController();
 const socketClient = new SocketClient(io({ autoConnect: true }));
 let webRtcClient = null;
@@ -115,6 +116,9 @@ async function resetApp() {
   resetTranscriptState();
   ui.clearError();
   ui.setMuteButtonLabel(true);
+  ui.setSpeakerButtonLabel(true);
+  ui.remoteAudio.muted = false;
+  state.speakerEnabled = true;
   ui.resetForm();
   ui.setStatus("waiting", state.socketConnected ? "待機中" : "未接続");
   ui.setPresence("ルームに参加すると状態がここに表示されます。");
@@ -210,7 +214,9 @@ async function ensureLocalAudio() {
   try {
     state.localStream = await navigator.mediaDevices.getUserMedia(MEDIA_CONSTRAINTS);
     state.micEnabled = true;
+    state.speakerEnabled = true;
     ui.setMuteButtonLabel(true);
+    ui.setSpeakerButtonLabel(true);
     return state.localStream;
   } catch (error) {
     if (error && (error.name === "NotAllowedError" || error.name === "PermissionDeniedError")) {
@@ -346,6 +352,9 @@ async function leaveRoom() {
   stopLocalStream();
   ui.clearError();
   ui.setMuteButtonLabel(true);
+  ui.setSpeakerButtonLabel(true);
+  ui.remoteAudio.muted = false;
+  state.speakerEnabled = true;
 }
 
 function toggleMute() {
@@ -358,6 +367,12 @@ function toggleMute() {
     track.enabled = state.micEnabled;
   });
   ui.setMuteButtonLabel(state.micEnabled);
+}
+
+function toggleSpeaker() {
+  state.speakerEnabled = !state.speakerEnabled;
+  ui.remoteAudio.muted = !state.speakerEnabled;
+  ui.setSpeakerButtonLabel(state.speakerEnabled);
 }
 
 function registerSocketEvents() {
@@ -486,6 +501,7 @@ async function init() {
     });
 
     ui.muteButton.addEventListener("click", toggleMute);
+    ui.speakerButton.addEventListener("click", toggleSpeaker);
     ui.hangupButton.addEventListener("click", leaveRoom);
     ui.exportTranscriptButton.addEventListener("click", exportTranscript);
     ui.resetAppButton.addEventListener("click", resetApp);
