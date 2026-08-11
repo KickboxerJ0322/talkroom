@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Call</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="card join-card" aria-labelledby="app-title">
+        <p class="eyebrow">Voice Call MVP</p>
+        <h1 id="app-title">AI Call</h1>
+        <p class="lead">ルームIDとPINを入力して、2人で音声通話できます。</p>
+
+        <form id="join-form" class="join-form" novalidate>
+          <label class="field-label" for="roomId">ルームID</label>
+          <input
+            id="roomId"
+            name="roomId"
+            class="room-input"
+            type="text"
+            inputmode="text"
+            maxlength="32"
+            autocomplete="off"
+            placeholder="junpei123"
+            aria-describedby="roomHelp"
+          />
+          <p id="roomHelp" class="help-text">
+            3〜32文字の英字、数字、ハイフン、アンダースコアが使えます。
+          </p>
+
+          <label class="field-label" for="pin">PIN</label>
+          <input
+            id="pin"
+            name="pin"
+            class="room-input"
+            type="password"
+            inputmode="numeric"
+            maxlength="8"
+            autocomplete="off"
+            placeholder="1234"
+            aria-describedby="pinHelp"
+          />
+          <p id="pinHelp" class="help-text">4〜8桁の数字を入力してください。</p>
+
+          <button id="joinButton" class="primary-button" type="submit">
+            通話ルームに参加
+          </button>
+        </form>
+      </section>
+
+      <section class="card status-card" aria-live="polite">
+        <div class="room-row">
+          <span class="room-label">ルーム</span>
+          <span id="currentRoom" class="room-value">未参加</span>
+        </div>
+
+        <div class="status-block">
+          <span id="statusDot" class="status-dot waiting"></span>
+          <span id="statusText" class="status-text">待機中</span>
+        </div>
+
+        <p id="presenceText" class="presence-text">ルームに参加すると状態がここに表示されます。</p>
+        <p id="errorText" class="error-text" hidden></p>
+
+        <div class="timer" id="callTimer">00:00</div>
+
+        <div class="actions">
+          <button id="muteButton" class="secondary-button" type="button" disabled>
+            マイクOFF
+          </button>
+          <button id="hangupButton" class="danger-button" type="button" disabled>
+            通話を終了
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <audio id="remoteAudio" autoplay playsinline></audio>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="/js/app.js"></script>
+  </body>
+</html>

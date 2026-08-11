@@ -1,0 +1,57 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCP_REGION: ${{ vars.GCP_REGION }}
+  GAR_LOCATION: ${{ vars.GAR_LOCATION }}
+  GAR_REPOSITORY: ${{ vars.GAR_REPOSITORY }}
+  CLOUD_RUN_SERVICE: ${{ vars.CLOUD_RUN_SERVICE }}
+  IMAGE_NAME: ${{ vars.GAR_LOCATION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GAR_REPOSITORY }}/${{ vars.CLOUD_RUN_SERVICE }}:${{ github.sha }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Authorize Docker for Artifact Registry
+        run: gcloud auth configure-docker "${GAR_LOCATION}-docker.pkg.dev" --quiet
+
+      - name: Build image
+        run: docker build -t "${IMAGE_NAME}" .
+
+      - name: Push image
+        run: docker push "${IMAGE_NAME}"
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.CLOUD_RUN_SERVICE }}
+          region: ${{ env.GCP_REGION }}
+          image: ${{ env.IMAGE_NAME }}
+          flags: >-
+            --allow-unauthenticated
+            --port=3000
+            --timeout=3600
+            --max-instances=1
