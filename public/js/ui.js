@@ -34,9 +34,6 @@ export class UIController {
     this.presenceText = document.getElementById("presenceText");
     this.errorText = document.getElementById("errorText");
     this.callTimer = document.getElementById("callTimer");
-    this.micStatus = document.getElementById("micStatus");
-    this.speakerStatus = document.getElementById("speakerStatus");
-    this.cameraStatus = document.getElementById("cameraStatus");
     this.muteButton = document.getElementById("muteButton");
     this.cameraButton = document.getElementById("cameraButton");
     this.speakerButton = document.getElementById("speakerButton");
@@ -118,29 +115,30 @@ export class UIController {
   }
 
   setMuteButtonLabel(isMicEnabled) {
-    this.muteButton.textContent = isMicEnabled ? "マイクOFF" : "マイクON";
+    this.setMediaToggle(this.muteButton, "マイク", isMicEnabled);
   }
 
   setCameraButtonLabel(isCameraEnabled) {
-    this.cameraButton.textContent = isCameraEnabled ? "カメラOFF" : "カメラON";
+    this.setMediaToggle(this.cameraButton, "カメラ", isCameraEnabled);
   }
 
   setSpeakerButtonLabel(isSpeakerEnabled) {
-    this.speakerButton.textContent = isSpeakerEnabled ? "スピーカーOFF" : "スピーカーON";
+    this.setMediaToggle(this.speakerButton, "スピーカー", isSpeakerEnabled);
   }
 
   updateMediaStatus({ micEnabled, speakerEnabled, cameraEnabled }) {
-    this.setMediaPill(this.micStatus, "マイク", micEnabled);
-    this.setMediaPill(this.speakerStatus, "スピーカー", speakerEnabled);
-    this.setMediaPill(this.cameraStatus, "カメラ", cameraEnabled);
+    this.setMuteButtonLabel(micEnabled);
+    this.setSpeakerButtonLabel(speakerEnabled);
+    this.setCameraButtonLabel(cameraEnabled);
   }
 
-  setMediaPill(element, label, enabled) {
+  setMediaToggle(element, label, enabled) {
     if (!element) {
       return;
     }
 
-    element.textContent = `${label}: ${enabled ? "ON" : "OFF"}`;
+    element.textContent = `${label} ${enabled ? "ON" : "OFF"}`;
+    element.setAttribute("aria-pressed", enabled ? "true" : "false");
     element.classList.toggle("off", !enabled);
   }
 

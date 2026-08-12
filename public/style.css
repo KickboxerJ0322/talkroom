@@ -226,29 +226,6 @@ button:not(:disabled):active {
   letter-spacing: 0.04em;
 }
 
-.media-status {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.media-pill {
-  padding: 10px 12px;
-  border-radius: 16px;
-  background: rgba(126, 157, 28, 0.14);
-  color: #698217;
-  border: 1px solid rgba(126, 157, 28, 0.2);
-  font-size: 0.92rem;
-  font-weight: 700;
-  text-align: center;
-}
-
-.media-pill.off {
-  background: rgba(199, 96, 45, 0.1);
-  color: var(--danger);
-  border-color: rgba(199, 96, 45, 0.16);
-}
-
 .video-stage {
   position: relative;
   width: 100%;
@@ -311,6 +288,18 @@ button:not(:disabled):active {
   width: 100%;
   min-height: 52px;
   white-space: nowrap;
+}
+
+.media-toggle {
+  background: rgba(126, 157, 28, 0.14);
+  color: #698217;
+  border: 1px solid rgba(126, 157, 28, 0.22);
+}
+
+.media-toggle.off {
+  background: rgba(199, 96, 45, 0.1);
+  color: var(--danger);
+  border-color: rgba(199, 96, 45, 0.16);
 }
 
 .error-text {
@@ -479,9 +468,6 @@ button:not(:disabled):active {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .media-status {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 480px) {

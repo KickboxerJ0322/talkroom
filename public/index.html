@@ -78,16 +78,10 @@
 
         <div class="timer" id="callTimer">00:00</div>
 
-        <div class="media-status" aria-label="通話状態">
-          <div class="media-pill" id="micStatus">マイク: ON</div>
-          <div class="media-pill" id="speakerStatus">スピーカー: ON</div>
-          <div class="media-pill" id="cameraStatus">カメラ: OFF</div>
-        </div>
-
         <div class="actions">
-          <button id="muteButton" class="secondary-button" type="button" disabled>マイクOFF</button>
-          <button id="speakerButton" class="secondary-button" type="button" disabled>スピーカーOFF</button>
-          <button id="cameraButton" class="secondary-button" type="button" disabled>カメラON</button>
+          <button id="muteButton" class="secondary-button media-toggle" type="button" disabled aria-pressed="true">マイク ON</button>
+          <button id="speakerButton" class="secondary-button media-toggle" type="button" disabled aria-pressed="true">スピーカー ON</button>
+          <button id="cameraButton" class="secondary-button media-toggle off" type="button" disabled aria-pressed="false">カメラ OFF</button>
           <button id="hangupButton" class="danger-button" type="button" disabled>通話を終了</button>
         </div>
       </section>
