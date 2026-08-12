@@ -291,15 +291,57 @@ button:not(:disabled):active {
 }
 
 .media-toggle {
-  background: rgba(126, 157, 28, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(126, 157, 28, 0.08);
   color: #698217;
-  border: 1px solid rgba(126, 157, 28, 0.22);
+  border: 1px solid rgba(126, 157, 28, 0.2);
 }
 
 .media-toggle.off {
   background: rgba(199, 96, 45, 0.1);
   color: var(--danger);
   border-color: rgba(199, 96, 45, 0.16);
+}
+
+.toggle-label {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.toggle-switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 26px;
+  border-radius: 999px;
+  background: #43d05d;
+  box-shadow: inset 0 0 0 1px rgba(67, 208, 93, 0.08);
+  transition: background 0.2s ease;
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 22px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(77, 58, 5, 0.18);
+  transition: left 0.2s ease;
+}
+
+.media-toggle.off .toggle-switch {
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: inset 0 0 0 1px rgba(199, 96, 45, 0.18);
+}
+
+.media-toggle.off .toggle-thumb {
+  left: 2px;
 }
 
 .error-text {

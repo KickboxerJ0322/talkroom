@@ -137,8 +137,13 @@ export class UIController {
       return;
     }
 
-    element.textContent = `${label} ${enabled ? "ON" : "OFF"}`;
+    const labelElement = element.querySelector(".toggle-label");
+    if (labelElement) {
+      labelElement.textContent = label;
+    }
+
     element.setAttribute("aria-pressed", enabled ? "true" : "false");
+    element.setAttribute("aria-label", `${label} ${enabled ? "ON" : "OFF"}`);
     element.classList.toggle("off", !enabled);
   }
 

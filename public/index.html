@@ -79,9 +79,24 @@
         <div class="timer" id="callTimer">00:00</div>
 
         <div class="actions">
-          <button id="muteButton" class="secondary-button media-toggle" type="button" disabled aria-pressed="true">マイク ON</button>
-          <button id="speakerButton" class="secondary-button media-toggle" type="button" disabled aria-pressed="true">スピーカー ON</button>
-          <button id="cameraButton" class="secondary-button media-toggle off" type="button" disabled aria-pressed="false">カメラ OFF</button>
+          <button id="muteButton" class="secondary-button media-toggle" type="button" disabled aria-pressed="true">
+            <span class="toggle-label">マイク</span>
+            <span class="toggle-switch" aria-hidden="true">
+              <span class="toggle-thumb"></span>
+            </span>
+          </button>
+          <button id="speakerButton" class="secondary-button media-toggle" type="button" disabled aria-pressed="true">
+            <span class="toggle-label">スピーカー</span>
+            <span class="toggle-switch" aria-hidden="true">
+              <span class="toggle-thumb"></span>
+            </span>
+          </button>
+          <button id="cameraButton" class="secondary-button media-toggle off" type="button" disabled aria-pressed="false">
+            <span class="toggle-label">カメラ</span>
+            <span class="toggle-switch" aria-hidden="true">
+              <span class="toggle-thumb"></span>
+            </span>
+          </button>
           <button id="hangupButton" class="danger-button" type="button" disabled>通話を終了</button>
         </div>
       </section>
